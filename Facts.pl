@@ -61,7 +61,7 @@ superstate(error_diagnosis, reset_module_data).
 
 %% Top Level Transitions
 transition(dormant, init, start, null, null).
-transition(dormant, off, kill, null, null).
+transition(dormant, final, kill, null, null).
 transition(init, idle, init_ok, null, null).
 transition(init, error_diagnosis, init_crash, null, init_err_msg).
 transition(idle, monitoring, begin_monitoring, null, null).
@@ -72,7 +72,7 @@ transition(error_diagnosis, idle, idle_rescue, null, null).
 transition(error_diagnosis, monitoring, moni_rescue, null, null).
 transition(error_diagnosis, safe_shutdown, shutdown, 'retry >= 3', null).
 transition(safe_shutdown, dormant, sleep, null, null).
-transition(dormant, dormant, off, null, null).
+
 
 %% Init Transitions
 transition(boot_hw, senchk, hw_ok, null, null).
@@ -100,24 +100,3 @@ transition(error_rcv, applicable_rescue, null, err_protocol_def, null).
 transition(error_rcv, reset_module_data, null, 'err_protocol_def == false', null).
 transition(applicable_rescue, exit, apply_protocol_rescues, null, null).
 transition(reset_module_data, exit, reset_to_stable, null, null).
-
-%% Rules
-is_loop(Event, Guard):- transition(Source,Source,Event,Guard,_).
-all_loops(Set):- findall([Event,Guard], isLoop(Event, Guard), List), list_to_set(List, Set).
-is_edge(Event, Guard):- transition(_,_,Event,Guard,_).
-size(Length):-findall([Event,Guard], isEdge(Event,Guard),List), length(List,Length).
-is_link(Event, Guard):- isEdge(Event, Guard),not(isLoop(Event, Guard)).
-all_superstates(Set):- findall(superstate(Super,Sub),superstate(Super,Sub),List),list_to_set(List, Set).
-ancestor(Ancestor, Descendant):- superstate(Ancestor, Descendant).
-ancestor(Ancestor, Descendant):- superstate(State,Descendant),ancestor(Ancestor,State).
-inherits_transitions(State, List):- ancestor(Superstate,State),findall(transition(Previous,Superstate,Event,Guard,Action1),transition(Previous,Superstate,Event,Guard,Action1),List1),findall(transition(Superstate,Next,Event,Guard,Action2),transition(Superstate,Next,Event,Guard,Action2),List2),append(List1,List2,List).
-all_states(L):- findall(state(State),state(State),L).
-all_init_states(L):- findall(Init,initial_state(Init,_),L).
-get_starting_state(State):- initial_state(State,null).
-state_is_reflexive(State):- transition(State,State,_,_,_).
-graph_is_reflexive:-findall(state(L),stateIsReflexive(L),List),length(List,L1),size(L2),L1==L2.
-get_guards(Ret):- findall(Guard,transition(_,_,_,Guard,_),List1),delete(List1,null,List2),list_to_set(List2,Ret).
-get_events(Ret):- findall(Event,transition(_,_,Event,_,_),List1),delete(List1,null,List2),list_to_set(List2,Ret).
-get_actions(Ret):- findall(Action,transition(_,_,_,_,Action),List1),delete(List1,null,List2),list_to_set(List2,Ret).
-get_only_guarded(Ret):- findall([State1,State2],(transition(State1,State2,_,Guard,_),Guard\=null),Ret).
-legal_events_of(State, L):- findall([Event,Guard],(transition(State,_,Event,Guard,_),Event\=null,Guard\=null),L).
